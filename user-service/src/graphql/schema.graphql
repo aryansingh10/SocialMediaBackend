@@ -1,0 +1,83 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type User {
+  id: ID!
+  username: String!
+  email: String!
+  role: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  deletedAt: DateTime
+  joinedAt: DateTime
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Channel {
+  id: Float!
+  name: String!
+  createdAt: String!
+  updatedAt: String!
+  deletedAt: String
+}
+
+type UserChannel {
+  userId: ID!
+  channelId: ID!
+  role: String!
+  joinedAt: DateTime!
+}
+
+type UserAuthPayload {
+  id: Float!
+  role: String!
+}
+
+type Query {
+  getAllUsers: [User!]!
+  getUserById(id: Float!): User
+  getUserByEmail(email: String!): User
+  channel(id: Float!): Channel
+  getAllChannels: [Channel!]
+  getAllActiveChannels: [Channel!]
+  channelExists(name: String!): Boolean!
+  getUserChannel(userId: Float!): [UserChannel!]!
+  getUsersFromAChannel(channelId: Float!): [User!]!
+  getCntofUsersinChannel(channelId: Float!): Float!
+  validateToken(token: String!): UserAuthPayload!
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): String!
+  updateUser(id: Float!, input: UpdateUserInput!): User
+  softDeleteUser(id: Float!): String!
+  deleteUserFromDB(id: Float!): String!
+  softDeleteChannel(id: Float!): String
+  updateChannel(id: Float!, name: String!): String
+  createChannel(input: createChannelInput!): String!
+  addUserToChannel(channelId: Float!, userId: Float!): String!
+  removeUserFromChannel(userId: Float!, channelId: Float!): String!
+  login(email: String!, password: String!): String!
+}
+
+input CreateUserInput {
+  username: String!
+  email: String!
+  password: String!
+  role: String!
+}
+
+input UpdateUserInput {
+  username: String
+  email: String
+  password: String
+}
+
+input createChannelInput {
+  name: String!
+}

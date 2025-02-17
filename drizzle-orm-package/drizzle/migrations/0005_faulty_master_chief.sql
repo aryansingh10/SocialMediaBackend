@@ -1,0 +1,1 @@
+ALTER TABLE `channels` ADD `created_by` bigint unsigned NOT NULL;

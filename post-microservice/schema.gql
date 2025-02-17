@@ -1,0 +1,123 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type Post {
+  id: Float!
+  content: String!
+  authorId: Float!
+  channelId: Float!
+  createdAt: DateTime!
+  updatedAt: DateTime
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type Activity {
+  id: Float!
+  userId: Float!
+  entity: String!
+  action: String!
+  entityId: Float!
+  channelId: Float!
+  createdAt: DateTime!
+}
+
+type Like {
+  id: Int!
+  entityId: Int!
+  type: String!
+  userId: Int!
+  channelId: Int!
+  createdAt: DateTime!
+}
+
+type Reply {
+  id: Int!
+  commentId: Int!
+  authorId: Int!
+  channelId: Int!
+  content: String!
+  createdAt: DateTime!
+}
+
+type Query {
+  getAllPosts: [Post!]!
+  getPostById(id: Float!): Post
+  getAllPostsFromUser(UserId: Float!): [Post!]!
+  getAllPostsFromChannel(channelId: Float!): [Post!]!
+  getRecentPosts(limit: Float = 10): [Post!]!
+  getUserActivities(userId: Float!): [Activity!]!
+  getLikesByEntity(entityId: Int!, type: String!): [Like!]!
+  getLikeCountByEntity(entityId: Int!, type: String!): Int!
+  HasUserLiked(input: UserhasLikedDTO!): Boolean!
+  getReplyById(id: Float!): Reply!
+  getRepliesByComment(replyId: Float!): [Reply!]!
+  getActivitiesByTimeRange(userId: Float!, startTime: String, endTime: String): [Activity!]!
+}
+
+input UserhasLikedDTO {
+  entityId: Int!
+  userId: Int!
+  type: String!
+}
+
+type Mutation {
+  createPost(input: CreatePostDto!): String!
+  updatePost(input: UpdatePostDto!): String!
+  deletePost(id: Float!): String!
+  softDeletePost(id: Float!): String!
+  recordActivity(input: CreateActivityDto!): String!
+  likeEntity(input: CreateLikeDto!): String!
+  unlikeEntity(input: CreateLikeDto!): String!
+  createComment(input: CreateCommentDto!): String!
+  deleteComment(commentId: Float!): String!
+  updateComment(input: UpdateCommentDto!): String!
+  createReply(input: CreateReplyDto!): String!
+  delteReply(replyId: Float!): String!
+  updateReply(replyId: Float!, content: String!): String!
+}
+
+input CreatePostDto {
+  content: String!
+  channelId: Int!
+}
+
+input UpdatePostDto {
+  id: Int!
+  content: String!
+}
+
+input CreateActivityDto {
+  userId: Float!
+  entity: String!
+  action: String!
+  entityId: Float!
+  channelId: Float!
+}
+
+input CreateLikeDto {
+  entityId: Int!
+  type: String!
+  channelId: Int!
+}
+
+input CreateCommentDto {
+  postId: Int!
+  channelId: Int!
+  content: String!
+}
+
+input UpdateCommentDto {
+  id: Int!
+  content: String!
+}
+
+input CreateReplyDto {
+  commentId: Int!
+  channelId: Int!
+  content: String!
+}

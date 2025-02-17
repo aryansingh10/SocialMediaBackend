@@ -1,0 +1,2 @@
+ALTER TABLE `activity` ADD `channel_id` bigint unsigned NOT NULL;--> statement-breakpoint
+ALTER TABLE `activity` ADD CONSTRAINT `activity_channel_id_channels_id_fk` FOREIGN KEY (`channel_id`) REFERENCES `channels`(`id`) ON DELETE cascade ON UPDATE no action;

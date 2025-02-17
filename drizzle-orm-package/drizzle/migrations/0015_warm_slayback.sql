@@ -1,0 +1,1 @@
+ALTER TABLE `likes` ADD `type` enum('post','comment','reply') NOT NULL;

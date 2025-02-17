@@ -1,0 +1,1 @@
+ALTER TABLE `channels` MODIFY COLUMN `updated_at` timestamp DEFAULT (now());
