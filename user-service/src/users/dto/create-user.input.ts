@@ -8,14 +8,10 @@ export class CreateUserInput {
   username: string;
 
   @Field()
-  @IsEmail()
+  @IsEmail({}, { message: 'Invalid email format' })
   email: string;
 
   @Field()
   @MinLength(6)
   password: string;
-
-  @Field()
-  @IsEnum(['USER', 'ADMIN', 'SUPERADMIN'])
-  role: 'USER' | 'ADMIN' | 'SUPERADMIN';
 }

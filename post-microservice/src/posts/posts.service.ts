@@ -21,78 +21,115 @@ export class PostService {
     createPostDto: CreatePostDto,
     reqUser: { id: number; role: string },
   ) {
-    const post = await this.postRepository.createPost(createPostDto, reqUser);
-    log(post);
-    await this.activityService.recordActivity({
-      userId: reqUser.id,
-      entity: EntityType.POST,
-      action: ActionType.CREATED,
-      entityId: post.id ?? 0,
-      channelId: post.channelId ?? 0,
-    });
+    try {
+      const post = await this.postRepository.createPost(createPostDto, reqUser);
+      await this.activityService.recordActivity({
+        userId: reqUser.id,
+        entity: EntityType.POST,
+        action: ActionType.CREATED,
+        entityId: post.id,
+        channelId: post.channelId,
+      });
 
-    return `Post Successfully Created with id ${post.id}`;
+      return `Post Successfully Created with id ${post.id}`;
+    } catch {
+      throw new Error('Failed to create post');
+    }
   }
 
   async getPostByID(id: number) {
-    return await this.postRepository.getPostByID(id);
+    try {
+      return await this.postRepository.getPostByID(id);
+    } catch {
+      throw new Error(`Error fetching Posts with id ${id}`);
+    }
   }
 
   async getPostsByUserId(
     reqUser: { id: number; role: string },
     userId: number,
   ) {
-    return await this.postRepository.getPostsByUserId(reqUser, userId);
+    try {
+      return await this.postRepository.getPostsByUserId(reqUser, userId);
+    } catch {
+      throw new Error('Error fetching posts ');
+    }
   }
 
   async getPostsByChannelId(
     channelId: number,
     reqUser: { id: number; role: string },
   ) {
-    return await this.postRepository.getAllPostsFromChannel(channelId, reqUser);
+    try {
+      return await this.postRepository.getAllPostsFromChannel(
+        channelId,
+        reqUser,
+      );
+    } catch {
+      throw new Error(
+        `Error fetching post of this channel with id ${channelId} `,
+      );
+    }
   }
 
   async updatePost(
     input: UpdatePostDto,
     reqUser: { id: number; role: string },
   ) {
-    const updatedPost = await this.postRepository.updatePost(input, reqUser);
-    const { channelId } = updatedPost[0];
-    await this.activityService.recordActivity({
-      userId: reqUser.id,
-      entity: EntityType.POST,
-      action: ActionType.UPDATED,
-      entityId: input.id,
-      channelId: channelId,
-    });
+    try {
+      const updatedPost = await this.postRepository.updatePost(input, reqUser);
+      log('59', updatedPost.channelId);
 
-    return `Post Successfully Updated with id ${input.id}`;
+      await this.activityService.recordActivity({
+        userId: reqUser.id,
+        entity: EntityType.POST,
+        action: ActionType.UPDATED,
+        entityId: input.id,
+        channelId: updatedPost.channelId,
+      });
+
+      return `Post with id ${input.id} Successfully Updated `;
+    } catch {
+      throw new Error(`Error Updating Post with ID ${input.id}`);
+    }
   }
 
   async deletePost(id: number, reqUser: { id: number; role: string }) {
-    const deletedPost = await this.postRepository.deletePost(id, reqUser);
+    try {
+      const deletedPost = await this.postRepository.deletePost(id, reqUser);
 
-    await this.activityService.recordActivity({
-      userId: reqUser.id,
-      entity: EntityType.POST,
-      action: ActionType.DELETED,
-      entityId: id,
-      channelId: deletedPost.channelId,
-    });
+      await this.activityService.recordActivity({
+        userId: reqUser.id,
+        entity: EntityType.POST,
+        action: ActionType.DELETED,
+        entityId: id,
+        channelId: deletedPost.channelId,
+      });
 
-    return `Post Successfully Deleted with id ${id}`;
+      return `Post Successfully Deleted with id ${id}`;
+    } catch {
+      throw new Error(`Error Deleting Post with ID ${id}`);
+    }
   }
 
   async softDeletePost(id: number, reqUser: { id: number; role: string }) {
-    const softDeletedPost = await this.postRepository.softDeletePost(
-      id,
-      reqUser,
-    );
+    try {
+      const softDeletedPost = await this.postRepository.softDeletePost(
+        id,
+        reqUser,
+      );
 
-    return `Post Successfully Soft Deleted with id ${id}`;
+      return `Post Successfully Soft Deleted with id ${id}`;
+    } catch {
+      throw new Error(`Error Deleting Post  with Id ${id}`);
+    }
   }
 
   async getRecentPosts(limit: number) {
-    return await this.postRepository.getRecentPosts(limit);
+    try {
+      return await this.postRepository.getRecentPosts(limit);
+    } catch {
+      throw new Error('Faild to fetch Recent Posts');
+    }
   }
 }

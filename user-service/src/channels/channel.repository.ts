@@ -1,70 +1,148 @@
 import { db, channels } from 'drizzle-orm-package';
 import { eq, isNull } from 'drizzle-orm';
 import { createChannelInput } from './dto/create-channel.input';
-import { Channel } from './models/channel.model';
-import { log } from 'console';
+import {
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 
 export class ChannelRepository {
   async createChannel(input: createChannelInput): Promise<string> {
-    const [result] = await db
-      .insert(channels)
-      .values({ name: input.name })
-      .execute();
+    try {
+      const [result] = await db
+        .insert(channels)
+        .values({ name: input.name })
+        .execute();
 
-    return `Channel Succesfully Added with ${result.insertId}`;
+      return `Channel Successfully Added with Id ${result.insertId}`;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error creating channel: ${error.message}`,
+      );
+    }
   }
 
   async getChannelById(id: number) {
-    const [channel] = await db
-      .select()
-      .from(channels)
-      .where(eq(channels.id, id))
-      .limit(1);
+    try {
+      const [channel] = await db
+        .select()
+        .from(channels)
+        .where(eq(channels.id, id))
+        .limit(1);
 
-    return channel;
+      return channel;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error fetching channel: ${error.message}`,
+      );
+    }
   }
 
   async getAllChannels() {
-    const channelsList = await db.select().from(channels);
-
-    return channelsList;
+    try {
+      return await db.select().from(channels);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error fetching all channels: ${error.message}`,
+      );
+    }
   }
 
   async deleteChannel(id: number): Promise<string> {
-    await db
-      .update(channels)
-      .set({
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(channels.id, id))
-      .execute();
+    try {
+      const channel = await db
+        .select()
+        .from(channels)
+        .where(eq(channels.id, id));
 
-    return 'Channel deleted successfully';
+      if (channel.length === 0) {
+        throw new NotFoundException(`Channel not found with id ${id}`);
+      }
+
+      if (channel[0].deletedAt !== null) {
+        return `Channel Already Deleted`;
+      }
+
+      await db
+        .update(channels)
+        .set({
+          deletedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(channels.id, id))
+        .execute();
+
+      return 'Channel deleted successfully';
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error deleting channel: ${error.message}`,
+      );
+    }
   }
 
   async updateChannel(id: number, name: string): Promise<string> {
-    await db
-      .update(channels)
-      .set({
-        name: name,
-        updatedAt: new Date(),
-      })
-      .where(eq(channels.id, id))
-      .execute();
+    try {
+      await db
+        .update(channels)
+        .set({
+          name: name,
+          updatedAt: new Date(),
+        })
+        .where(eq(channels.id, id))
+        .execute();
 
-    return `Channel name Updated Successfully`;
+      return `Channel name Updated Successfully`;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error updating channel: ${error.message}`,
+      );
+    }
   }
 
   async allActiveChannels() {
-    return await db.select().from(channels).where(isNull(channels.deletedAt));
+    try {
+      return await db.select().from(channels).where(isNull(channels.deletedAt));
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error fetching active channels: ${error.message}`,
+      );
+    }
   }
 
   async findByName(name: string): Promise<boolean> {
-    const result = await db
-      .select()
-      .from(channels)
-      .where(eq(channels.name, name));
-    return result.length > 0;
+    try {
+      const result = await db
+        .select()
+        .from(channels)
+        .where(eq(channels.name, name));
+      return result.length > 0;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error finding channel by name: ${error.message}`,
+      );
+    }
+  }
+
+  async deleteChannelFromDB(chanelID: number): Promise<string> {
+    try {
+      const channel = await db
+        .select()
+        .from(channels)
+        .where(eq(channels.id, chanelID));
+
+      if (channel.length === 0) {
+        throw new NotFoundException(
+          `Channel with id ${chanelID} does not exist`,
+        );
+      }
+
+      await db.delete(channels).where(eq(channels.id, chanelID));
+
+      return 'Channel Deleted From the database';
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Error deleting channel from DB: ${error.message}`,
+      );
+    }
   }
 }

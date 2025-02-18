@@ -19,52 +19,85 @@ export class LikeService {
     type: LikeType,
     reqUser: { id: number; role: string },
   ) {
-    return await this.likeRepository.getLikesByEntity(entityId, type, reqUser);
+    try {
+      return await this.likeRepository.getLikesByEntity(
+        entityId,
+        type,
+        reqUser,
+      );
+    } catch (error) {
+      throw new UnauthorizedException(
+        `Error fetching likes for entity ${entityId}: ${error.message}`,
+      );
+    }
   }
 
   async getLikeCountByEntity(
     entityId: number,
     type: LikeType,
   ): Promise<number> {
-    return await this.likeRepository.getLikeCountByEntity(entityId, type);
+    try {
+      return await this.likeRepository.getLikeCountByEntity(entityId, type);
+    } catch (error) {
+      throw new UnauthorizedException(
+        `Error fetching like count for entity ${entityId}: ${error.message}`,
+      );
+    }
   }
 
   async likeEntity(
     input: CreateLikeDto,
     reqUser: { id: number; role: string },
   ) {
-    const result = await this.likeRepository.likeEntity(input, reqUser);
+    try {
+      const result = await this.likeRepository.likeEntity(input, reqUser);
 
-    await this.activityService.recordActivity({
-      userId: reqUser.id,
-      entity: EntityType.LIKE,
-      action: ActionType.ADDED,
-      entityId: input.entityId,
-      channelId: input.channelId,
-    });
+      await this.activityService.recordActivity({
+        userId: reqUser.id,
+        entity: EntityType.LIKE,
+        action: ActionType.ADDED,
+        entityId: input.entityId,
+        channelId: input.channelId,
+      });
 
-    return result;
+      return result;
+    } catch (error) {
+      throw new UnauthorizedException(
+        `Error liking entity with ID ${input.entityId}: ${error.message}`,
+      );
+    }
   }
 
   async unlikeEntity(
     input: CreateLikeDto,
     reqUser: { id: number; role: string },
   ) {
-    const result = await this.likeRepository.unlikeEntity(input, reqUser);
+    try {
+      const result = await this.likeRepository.unlikeEntity(input, reqUser);
 
-    await this.activityService.recordActivity({
-      userId: reqUser.id,
-      entity: EntityType.LIKE,
-      action: ActionType.REMOVED,
-      entityId: input.entityId,
-      channelId: input.channelId,
-    });
+      await this.activityService.recordActivity({
+        userId: reqUser.id,
+        entity: EntityType.LIKE,
+        action: ActionType.REMOVED,
+        entityId: input.entityId,
+        channelId: input.channelId,
+      });
 
-    return result;
+      return result;
+    } catch (error) {
+      throw new UnauthorizedException(
+        `Error unliking entity with ID ${input.entityId}: ${error.message}`,
+      );
+    }
   }
 
   async hasUserLiked(input: UserhasLikedDTO) {
-    
-    return await this.likeRepository.hasUserLikedEntity(input);
+    try {
+      return await this.likeRepository.hasUserLikedEntity(input);
+    } catch (error) {
+      throw new UnauthorizedException(
+        `Error checking if user has liked entity: ${error.message}`,
+      );
+    }
   }
 }

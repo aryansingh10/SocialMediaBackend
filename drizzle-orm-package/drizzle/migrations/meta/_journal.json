@@ -148,6 +148,13 @@
       "when": 1739612676480,
       "tag": "0020_silent_black_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1739863147379,
+      "tag": "0021_unique_wrecker",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import {
   db,
   likes,
@@ -21,195 +26,224 @@ export class LikeRepository {
     type: LikeType,
     reqUser: { id: number; role: string },
   ) {
-    if (reqUser.role === 'SUPERADMIN') {
-      return await db
+    try {
+      const like = await db
         .select()
         .from(likes)
-        .where(and(eq(likes.entityId, entityId), eq(likes.type, type)));
-    }
+        .where(eq(likes.entityId, entityId));
+      if (like.length === 0)
+        throw new NotFoundException(`${type} do not exist with id ${entityId}`);
 
-    if (reqUser.role === 'USER') {
-      const userChannelMapping = await db
-        .select({ channelId: userChannel.channelId })
-        .from(userChannel)
-        .where(eq(userChannel.userId, reqUser.id));
-
-      if (!userChannelMapping.length) {
-        throw new UnauthorizedException('User is not part of any channel');
+      if (reqUser.role === 'SUPERADMIN') {
+        return await db
+          .select()
+          .from(likes)
+          .where(and(eq(likes.entityId, entityId), eq(likes.type, type)));
       }
 
-      return await db
-        .select()
-        .from(likes)
-        .where(
-          and(
-            eq(likes.entityId, entityId),
-            eq(likes.type, type),
-            eq(likes.channelId, userChannelMapping[0].channelId),
-          ),
-        );
-    }
+      if (reqUser.role === 'USER') {
+        const userChannelMapping = await db
+          .select({ channelId: userChannel.channelId })
+          .from(userChannel)
+          .where(eq(userChannel.userId, reqUser.id));
 
-    if (reqUser.role === 'ADMIN') {
-      const adminChannels = await db
-        .select({ channelId: userChannel.channelId })
-        .from(userChannel)
-        .where(eq(userChannel.userId, reqUser.id));
+        if (!userChannelMapping.length) {
+          throw new UnauthorizedException('User is not part of any channel');
+        }
 
-      if (!adminChannels.length) {
-        throw new UnauthorizedException('Admin is not managing any channels');
+        return await db
+          .select()
+          .from(likes)
+          .where(
+            and(
+              eq(likes.entityId, entityId),
+              eq(likes.type, type),
+              eq(likes.channelId, userChannelMapping[0].channelId),
+            ),
+          );
       }
-      const channelIds = adminChannels.map((c) => c.channelId);
 
-      return await db
-        .select()
-        .from(likes)
-        .where(
-          and(
-            eq(likes.entityId, entityId),
-            eq(likes.type, type),
-            sql`${likes.channelId} IN (${channelIds})`,
-          ),
-        );
+      if (reqUser.role === 'ADMIN') {
+        const adminChannels = await db
+          .select({ channelId: userChannel.channelId })
+          .from(userChannel)
+          .where(eq(userChannel.userId, reqUser.id));
+
+        if (!adminChannels.length) {
+          throw new UnauthorizedException('Admin is not managing any channels');
+        }
+        const channelIds = adminChannels.map((c) => c.channelId);
+
+        return await db
+          .select()
+          .from(likes)
+          .where(
+            and(
+              eq(likes.entityId, entityId),
+              eq(likes.type, type),
+              sql`${likes.channelId} IN (${channelIds})`,
+            ),
+          );
+      }
+
+      throw new UnauthorizedException(
+        'You are not allowed to view these likes.',
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
     }
-
-    throw new UnauthorizedException('You are not allowed to view these likes.');
   }
 
   async getLikeCountByEntity(
     entityId: number,
     type: LikeType,
   ): Promise<number> {
-    const result = await db
-      .select({ count: count() })
-      .from(likes)
-      .where(and(eq(likes.entityId, entityId), eq(likes.type, type)));
+    try {
+      const result = await db
+        .select({ count: count() })
+        .from(likes)
+        .where(and(eq(likes.entityId, entityId), eq(likes.type, type)));
 
-    return result[0]?.count || 0;
+      return result[0]?.count || 0;
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
   async likeEntity(
     input: CreateLikeDto,
     reqUser: { id: number; role: string },
   ): Promise<string> {
-    const { entityId, type, channelId } = input;
-    const userId = reqUser.id;
+    try {
+      const { entityId, type, channelId } = input;
+      const userId = reqUser.id;
 
-    let findEntity;
+      let findEntity;
 
-    if (type === LikeType.POST) {
-      findEntity = await db
+      if (type === LikeType.POST) {
+        findEntity = await db
+          .select()
+          .from(posts)
+          .where(and(eq(posts.id, entityId), eq(posts.channelId, channelId)));
+      } else if (type === LikeType.COMMENT) {
+        findEntity = await db
+          .select()
+          .from(comments)
+          .where(
+            and(eq(comments.id, entityId), eq(comments.channelId, channelId)),
+          );
+      } else if (type === LikeType.REPLY) {
+        findEntity = await db
+          .select()
+          .from(replies)
+          .where(
+            and(eq(replies.id, entityId), eq(replies.channelId, channelId)),
+          );
+      }
+
+      if (!findEntity.length) {
+        return `Invalid ${type} ID ${entityId} for channel ${channelId}`;
+      }
+
+      if (reqUser.role === 'SUPERADMIN') {
+        return await insertLikeHelper(entityId, userId, type, channelId);
+      }
+
+      const isUserInChannel = await db
         .select()
-        .from(posts)
-        .where(and(eq(posts.id, entityId), eq(posts.channelId, channelId)));
-    } else if (type === LikeType.COMMENT) {
-      findEntity = await db
-        .select()
-        .from(comments)
-        .where(
-          and(eq(comments.id, entityId), eq(comments.channelId, channelId)),
-        );
-    } else if (type === LikeType.REPLY) {
-      findEntity = await db
-        .select()
-        .from(replies)
-        .where(and(eq(replies.id, entityId), eq(replies.channelId, channelId)));
-    }
-
-    if (!findEntity.length) {
-      return `Invalid ${type} ID ${entityId} for channel ${channelId}`;
-    }
-
-    if (reqUser.role === 'SUPERADMIN') {
-      return await insertLikeHelper(entityId, userId, type, channelId);
-    }
-
-    const isUserInChannel = await db
-      .select()
-      .from(userChannel)
-      .where(
-        and(
-          eq(userChannel.userId, userId),
-          eq(userChannel.channelId, channelId),
-        ),
-      );
-
-    if (!isUserInChannel.length) {
-      throw new UnauthorizedException(
-        `You are not part of channel ${channelId}.`,
-      );
-    }
-
-    if (reqUser.role === 'ADMIN') {
-      const adminChannels = await db
-        .select({ channelId: userChannel.channelId })
         .from(userChannel)
-        .where(eq(userChannel.userId, userId));
+        .where(
+          and(
+            eq(userChannel.userId, userId),
+            eq(userChannel.channelId, channelId),
+          ),
+        );
 
-      const canLike = adminChannels.some(
-        (adminChannel) => adminChannel.channelId === channelId,
-      );
-
-      if (!canLike) {
+      if (!isUserInChannel.length) {
         throw new UnauthorizedException(
-          `Admins can only like posts from their own channels.`,
+          `You are not part of channel ${channelId}.`,
         );
       }
+
+      if (reqUser.role === 'ADMIN') {
+        const adminChannels = await db
+          .select({ channelId: userChannel.channelId })
+          .from(userChannel)
+          .where(eq(userChannel.userId, userId));
+
+        const canLike = adminChannels.some(
+          (adminChannel) => adminChannel.channelId === channelId,
+        );
+
+        if (!canLike) {
+          throw new UnauthorizedException(
+            `Admins can only like posts from their own channels.`,
+          );
+        }
+      }
+      return await insertLikeHelper(entityId, userId, type, channelId);
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
     }
-    return await insertLikeHelper(entityId, userId, type, channelId);
   }
 
   async unlikeEntity(
     input: CreateLikeDto,
     reqUser: { id: number; role: string },
   ): Promise<string> {
-    const { entityId, type, channelId } = input;
-    const userId = reqUser.id;
-    const existingLike = await db
-      .select({ id: likes.id })
-      .from(likes)
-      .where(
-        and(
-          eq(likes.entityId, entityId),
-          eq(likes.userId, userId),
-          eq(likes.type, type),
-          eq(likes.channelId, channelId),
-        ),
-      );
+    try {
+      const { entityId, type, channelId } = input;
+      const userId = reqUser.id;
+      const existingLike = await db
+        .select({ id: likes.id })
+        .from(likes)
+        .where(
+          and(
+            eq(likes.entityId, entityId),
+            eq(likes.userId, userId),
+            eq(likes.type, type),
+            eq(likes.channelId, channelId),
+          ),
+        );
 
-    if (existingLike.length === 0) {
-      return `You have not liked this ${type} yet.`;
+      if (existingLike.length === 0) {
+        return `You have not liked this ${type} yet.`;
+      }
+
+      await db
+        .delete(likes)
+        .where(
+          and(
+            eq(likes.entityId, entityId),
+            eq(likes.userId, userId),
+            eq(likes.type, type),
+            eq(likes.channelId, channelId),
+          ),
+        );
+
+      return `${type.charAt(0).toUpperCase() + type.slice(1)} unliked successfully.`;
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
     }
-
-    await db
-      .delete(likes)
-      .where(
-        and(
-          eq(likes.entityId, entityId),
-          eq(likes.userId, userId),
-          eq(likes.type, type),
-          eq(likes.channelId, channelId),
-        ),
-      );
-
-    return `${type.charAt(0).toUpperCase() + type.slice(1)} unliked successfully.`;
   }
 
-
-
   async hasUserLikedEntity(input: UserhasLikedDTO): Promise<boolean> {
-    const { entityId, userId, type } = input;
-    const existingLike = await db
-      .select()
-      .from(likes)
-      .where(
-        and(
-          eq(likes.entityId, entityId),
-          eq(likes.userId, userId),
-          eq(likes.type, type),
-        ),
-      );
+    try {
+      const { entityId, userId, type } = input;
+      const existingLike = await db
+        .select()
+        .from(likes)
+        .where(
+          and(
+            eq(likes.entityId, entityId),
+            eq(likes.userId, userId),
+            eq(likes.type, type),
+          ),
+        );
 
-    return existingLike.length > 0;
+      return existingLike.length > 0;
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 }

@@ -39,7 +39,7 @@ type UserAuthPayload {
 }
 
 type Query {
-  getAllUsers: [User!]!
+  getAllUsers: [User!]
   getUserById(id: Float!): User
   getUserByEmail(email: String!): User
   channel(id: Float!): Channel
@@ -54,10 +54,12 @@ type Query {
 
 type Mutation {
   createUser(input: CreateUserInput!): String!
+  createAdmin(input: CreateUserInput!): String!
   updateUser(id: Float!, input: UpdateUserInput!): User
   softDeleteUser(id: Float!): String!
   deleteUserFromDB(id: Float!): String!
   softDeleteChannel(id: Float!): String
+  DeleteChannelFromDB(id: Float!): String
   updateChannel(id: Float!, name: String!): String
   createChannel(input: createChannelInput!): String!
   addUserToChannel(channelId: Float!, userId: Float!): String!
@@ -69,7 +71,6 @@ input CreateUserInput {
   username: String!
   email: String!
   password: String!
-  role: String!
 }
 
 input UpdateUserInput {

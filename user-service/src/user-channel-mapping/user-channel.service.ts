@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { UserChannelRepository } from './user-channel.repository';
 
 @Injectable()
@@ -10,15 +10,23 @@ export class UserChannelService {
     userId: number,
     reqUser: { id: number; role: string },
   ) {
-    return await this.userChannelRepository.addUserToChannel(
-      channelId,
-      userId,
-      reqUser,
-    );
+    try {
+      return await this.userChannelRepository.addUserToChannel(
+        channelId,
+        userId,
+        reqUser,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
   async getUserChannels(userId: number) {
-    return this.userChannelRepository.getUserChannels(userId);
+    try {
+      return await this.userChannelRepository.getUserChannels(userId);
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
   async removeUserFromChannel(
@@ -26,17 +34,36 @@ export class UserChannelService {
     channelId: number,
     reqUser: { id: number; role: string },
   ) {
-    return this.userChannelRepository.removeUser(userId, channelId, reqUser);
+    try {
+      return await this.userChannelRepository.removeUser(
+        userId,
+        channelId,
+        reqUser,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
   async getUsersFromChannel(
     channelId: number,
     reqUser: { id: number; role: string },
   ) {
-    return this.userChannelRepository.getUsersInChannel(channelId, reqUser);
+    try {
+      return await this.userChannelRepository.getUsersInChannel(
+        channelId,
+        reqUser,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 
   async getNoOfUsersfromAChannel(channelId: number) {
-    return this.userChannelRepository.countUsersInChannel(channelId);
+    try {
+      return await this.userChannelRepository.countUsersInChannel(channelId);
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
+    }
   }
 }

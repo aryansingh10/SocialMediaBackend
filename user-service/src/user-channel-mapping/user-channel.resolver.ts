@@ -7,7 +7,7 @@ import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { CurrentUser } from 'src/auth/current-user.decorator';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-
+import { handleError } from 'src/users/helper/error-handler';
 @Resolver(() => UserChannel)
 export class UserChannelResolver {
   constructor(private readonly userChannelService: UserChannelService) {}
@@ -16,7 +16,12 @@ export class UserChannelResolver {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SUPERADMIN', 'ADMIN')
   async getUserChannel(@Args('userId') userId: number) {
-    return this.userChannelService.getUserChannels(userId);
+    try {
+      return await this.userChannelService.getUserChannels(userId);
+    } catch (error) {
+      console.error(error);
+      throw new Error('Failed to fetch user channels.');
+    }
   }
 
   @Query(() => [User])
@@ -26,16 +31,32 @@ export class UserChannelResolver {
     @Args('channelId') channelId: number,
     @CurrentUser() reqUser: { id: number; role: string },
   ) {
-    return this.userChannelService.getUsersFromChannel(channelId, reqUser);
+    try {
+      return await this.userChannelService.getUsersFromChannel(
+        channelId,
+        reqUser,
+      );
+    } catch (error) {
+      console.error(error);
+      throw new Error('Failed to fetch users from the channel.');
+    }
   }
 
   @Query(() => Number)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPERADMIN')
   async getCntofUsersinChannel(@Args('channelId') channelId: number) {
-    return this.userChannelService.getNoOfUsersfromAChannel(channelId);
+    try {
+      return await this.userChannelService.getNoOfUsersfromAChannel(channelId);
+    } catch (error) {
+      console.error(error);
+      throw new Error('Failed to count users in the channel.');
+    }
   }
 
   @Mutation(() => String)
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('SUPERADMIN', 'ADMIN')
   async addUserToChannel(
     @Args('channelId') channelId: number,
     @Args('userId') userId: number,
@@ -48,8 +69,8 @@ export class UserChannelResolver {
         reqUser,
       );
     } catch (error) {
-      console.log(error);
-      return error.message;
+      console.error(error);
+      handleError(error, 'Failed To add User in Channel');
     }
   }
 
@@ -61,11 +82,15 @@ export class UserChannelResolver {
     @Args('channelId') channelId: number,
     @CurrentUser() reqUser: { id: number; role: string },
   ) {
-    await this.userChannelService.removeUserFromChannel(
-      userId,
-      channelId,
-      reqUser,
-    );
-    return 'User removed from channel successfully';
+    try {
+      await this.userChannelService.removeUserFromChannel(
+        userId,
+        channelId,
+        reqUser,
+      );
+    } catch (error) {
+      console.error(error);
+      throw new Error('Failed to remove user from channel');
+    }
   }
 }
