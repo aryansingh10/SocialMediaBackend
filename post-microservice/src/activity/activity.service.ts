@@ -1,20 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ActivityRepository } from './activity.repository';
 import { CreateActivityDto } from './dto/create-activity.dto';
-import { EntityType } from './enum/entity-type';
 
 @Injectable()
 export class ActivityService {
   constructor(private readonly activityRepository: ActivityRepository) {}
 
   async recordActivity(input: CreateActivityDto) {
-    return await this.activityRepository.createActivity(input);
+    try {
+      return await this.activityRepository.createActivity(input);
+    } catch (error) {
+      console.error('Error recording activity:', error);
+      throw new InternalServerErrorException('Failed to record activity');
+    }
   }
 
   async getUserActivities(
     userId: number,
     reqUser: { id: number; role: string },
   ) {
-    return await this.activityRepository.getActivitiesByUser(userId, reqUser);
+    try {
+      return await this.activityRepository.getActivitiesByUser(userId, reqUser);
+    } catch (error) {
+      console.error('Error fetching user activities:', error);
+      throw new InternalServerErrorException('Failed to fetch user activities');
+    }
   }
 }

@@ -28,7 +28,6 @@ export class AuthService {
     try {
       const decoded = this.jwtService.verify(token);
 
-      // ✅ Debug: Log decoded token
       console.log('Decoded Token:', decoded);
 
       if (!decoded || !decoded.sub) {

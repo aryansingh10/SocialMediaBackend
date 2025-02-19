@@ -37,9 +37,9 @@ export class PostService {
     }
   }
 
-  async getPostByID(id: number) {
+  async getPostByID(id: number, reqUser: { id: number; role: string }) {
     try {
-      return await this.postRepository.getPostByID(id);
+      return await this.postRepository.getPostByID(id, reqUser);
     } catch {
       throw new Error(`Error fetching Posts with id ${id}`);
     }

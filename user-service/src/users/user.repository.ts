@@ -1,7 +1,6 @@
 import { db, userChannel, users } from 'drizzle-orm-package';
 import { eq, isNull, inArray, and } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
-import { log } from 'console';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 
 export class UserRepository {

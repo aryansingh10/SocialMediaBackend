@@ -26,12 +26,16 @@ export class PostResolver {
   }
 
   @Query(() => Post, { nullable: true })
-  async getPostById(@Args('id') id: number) {
+  @UseGuards(AuthGuard, RolesGuard)
+  async getPostById(
+    @Args('id') id: number,
+    @CurrentUser() reqUser: { id: number; role: string },
+  ) {
     try {
-      return await this.postService.getPostByID(id);
+      return await this.postService.getPostByID(id, reqUser);
     } catch (error) {
       throw new InternalServerErrorException(
-        `Failed to fetch post with ID ${id}: ${error.message}`,
+        `Failed to fetch post with ID ${id}`,
       );
     }
   }
@@ -46,7 +50,7 @@ export class PostResolver {
       return await this.postService.getPostsByUserId(reqUser, id);
     } catch (error) {
       throw new InternalServerErrorException(
-        `Failed to fetch posts for user ${id}: ${error.message}`,
+        `Failed to fetch posts for user ${id}`,
       );
     }
   }
@@ -62,7 +66,7 @@ export class PostResolver {
       return await this.postService.getPostsByChannelId(id, reqUser);
     } catch (error) {
       throw new InternalServerErrorException(
-        `Failed to fetch posts for channel ${id}: ${error.message}`,
+        `Failed to fetch posts for channel ${id}`,
       );
     }
   }
@@ -76,9 +80,7 @@ export class PostResolver {
     try {
       return await this.postService.createPost(input, reqUser);
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Failed to create post: ${error.message}`,
-      );
+      throw new InternalServerErrorException(`Failed to create post`);
     }
   }
 
@@ -90,9 +92,7 @@ export class PostResolver {
     try {
       return await this.postService.getRecentPosts(limit);
     } catch (error) {
-      throw new InternalServerErrorException(
-        `Failed to fetch recent posts: ${error.message}`,
-      );
+      throw new InternalServerErrorException(`Failed to fetch recent posts`);
     }
   }
 
@@ -113,6 +113,7 @@ export class PostResolver {
 
   @Mutation(() => String)
   @UseGuards(AuthGuard, RolesGuard)
+  @Roles('SUPERADMIN')
   async deletePost(
     @Args('id') id: number,
     @CurrentUser() reqUser: { id: number; role: string },
@@ -121,7 +122,7 @@ export class PostResolver {
       return await this.postService.deletePost(id, reqUser);
     } catch (error) {
       throw new InternalServerErrorException(
-        `Failed to delete post with ID ${id}: ${error.message}`,
+        `Failed to delete post with ID ${id}`,
       );
     }
   }
@@ -137,7 +138,7 @@ export class PostResolver {
       return await this.postService.softDeletePost(id, reqUser);
     } catch (error) {
       throw new InternalServerErrorException(
-        `Failed to soft delete post with ID ${id}: ${error.message}`,
+        `Failed to soft delete post with ID`,
       );
     }
   }

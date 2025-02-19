@@ -61,19 +61,28 @@ export class UserResolver {
 
   @Mutation(() => String)
   async createUser(@Args('input') input: CreateUserInput) {
-    const response = await this.userService.createUser(input);
-    return response.message;
+    try {
+      const response = await this.userService.createUser(input);
+      return response.message;
+    } catch (error) {
+      handleError(error, 'Failed to create user');
+    }
   }
 
   @Mutation(() => String)
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('SUPERADMIN')
-  async createAdmin(@Args('input') input: CreateUserInput, @Context() context) {
-    const createdBy = context.req.user;
-    const response = await this.userService.createAdmin(input, createdBy);
-    return response.message;
+  async createAdmin(
+    @Args('input') input: CreateUserInput,
+    @CurrentUser() createdBy: { id: number; role: string },
+  ) {
+    try {
+      const response = await this.userService.createAdmin(input, createdBy);
+      return response.message;
+    } catch (error) {
+      handleError(error, 'Failed to create Admin');
+    }
   }
-
   @Mutation(() => User, { nullable: true })
   @UseGuards(JwtAuthGuard, RolesGuard)
   async updateUser(

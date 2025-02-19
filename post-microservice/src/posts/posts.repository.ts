@@ -3,17 +3,18 @@ import {
   UnauthorizedException,
   NotFoundException,
   InternalServerErrorException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { db, posts, userChannel, users, channels } from 'drizzle-orm-package';
 import { Post } from './model/post.model';
-import { eq, desc, and } from 'drizzle-orm';
+import { eq, desc, and, isNull } from 'drizzle-orm';
 import { log } from 'console';
 import { CreatePostDto, UpdatePostDto } from './dto/post.input';
 
 @Injectable()
 export class PostRepository {
   async getAllPosts() {
-    return await db.select().from(posts);
+    return await db.select().from(posts).where(isNull(posts.deletedAt));
   }
 
   async createPost(
@@ -23,16 +24,6 @@ export class PostRepository {
     try {
       const { content, channelId } = createPostDto;
       const authorId = reqUser.id;
-
-      if (reqUser.role === 'SUPERADMIN') {
-        const [post] = await db.insert(posts).values({
-          content,
-          authorId,
-          channelId,
-        });
-
-        return { id: post.insertId, channelId };
-      }
 
       const authorExists = await db
         .select({ id: users.id })
@@ -52,20 +43,22 @@ export class PostRepository {
         throw new NotFoundException('Channel Not Exist');
       }
 
-      const isUserInChannel = await db
-        .select({ id: userChannel.userId })
-        .from(userChannel)
-        .where(
-          and(
-            eq(userChannel.userId, authorId),
-            eq(userChannel.channelId, channelId),
-          ),
-        );
+      if (reqUser.role !== 'SUPERADMIN') {
+        const isUserInChannel = await db
+          .select({ id: userChannel.userId })
+          .from(userChannel)
+          .where(
+            and(
+              eq(userChannel.userId, authorId),
+              eq(userChannel.channelId, channelId),
+            ),
+          );
 
-      if (!isUserInChannel.length) {
-        throw new NotFoundException(
-          `You are not a member of Channel ${channelId}.`,
-        );
+        if (!isUserInChannel.length) {
+          throw new NotFoundException(
+            `You are not a member of Channel ${channelId}.`,
+          );
+        }
       }
 
       const [post] = await db.insert(posts).values({
@@ -80,10 +73,33 @@ export class PostRepository {
     }
   }
 
-  async getPostByID(id: number) {
+  async getPostByID(id: number, reqUser: { id: number; role: string }) {
     try {
-      const result = await db.select().from(posts).where(eq(posts.id, id));
-      return result.length > 0 ? result[0] : null;
+      const post = await db.select().from(posts).where(eq(posts.id, id));
+      if (post.length === 0) {
+        throw new NotFoundException(`Post with ${id} not found`);
+      }
+      const postData = post[0];
+      log(post);
+
+      if (reqUser.role === 'SUPERADMIN') {
+        return postData;
+      }
+      const userHasAccess = await db
+        .select()
+        .from(userChannel)
+        .where(
+          and(
+            eq(userChannel.userId, reqUser.id),
+            eq(userChannel.channelId, postData.channelId),
+          ),
+        );
+
+      if (userHasAccess.length === 0) {
+        throw new UnauthorizedException('Access Denied');
+      }
+
+      return postData;
     } catch (error) {
       throw new InternalServerErrorException('Error fetching post by ID');
     }
@@ -249,48 +265,15 @@ export class PostRepository {
         throw new NotFoundException(`Post with ID ${id} not found.`);
       }
 
-      const { authorId, channelId } = post[0];
+      const { channelId } = post[0];
 
-      if (reqUser.role === 'SUPERADMIN') {
-        const [deleted] = await db.delete(posts).where(eq(posts.id, id));
-        if (deleted.affectedRows === 0) {
-          throw new Error(`Failed to delete post with ID ${id}`);
-        }
-        return { id, channelId };
+      if (reqUser.role !== 'SUPERADMIN') {
+        throw new ForbiddenException(
+          `Only SUPERADMIN can permanently delete posts.`,
+        );
       }
 
-      if (reqUser.role === 'ADMIN') {
-        const isAdminInChannel = await db
-          .select()
-          .from(userChannel)
-          .where(
-            and(
-              eq(userChannel.userId, reqUser.id),
-              eq(userChannel.channelId, channelId),
-            ),
-          );
-
-        if (isAdminInChannel.length === 0) {
-          throw new UnauthorizedException(
-            `You can only delete posts from your assigned channels.`,
-          );
-        }
-
-        const [deleted] = await db.delete(posts).where(eq(posts.id, id));
-        if (deleted.affectedRows === 0) {
-          throw new Error(`Failed to delete post with ID ${id}`);
-        }
-        return { id, channelId };
-      }
-
-      if (reqUser.role === 'USER' && authorId !== reqUser.id) {
-        throw new UnauthorizedException(`You can only delete your own posts.`);
-      }
-
-      const [deleted] = await db.delete(posts).where(eq(posts.id, id));
-      if (deleted.affectedRows === 0) {
-        throw new Error(`Failed to delete post with ID ${id}`);
-      }
+      await db.delete(posts).where(eq(posts.id, id));
 
       return { id, channelId };
     } catch (error) {

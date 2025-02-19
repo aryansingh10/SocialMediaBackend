@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { RepliesRepository } from './reply.repository';
 import { CreateReplyDto } from './dto/create-reply.dto';
 import { ActivityService } from 'src/activity/activity.service';
@@ -16,34 +16,42 @@ export class RepliesService {
     input: CreateReplyDto,
     reqUser: { id: number; role: string },
   ) {
-    const replyId = await this.repliesRepository.createReply(input, reqUser);
+    try {
+      const replyId = await this.repliesRepository.createReply(input, reqUser);
 
-    await this.activityService.recordActivity({
-      userId: reqUser.id,
-      entity: EntityType.REPLY,
-      action: ActionType.CREATED,
-      entityId: replyId,
-      channelId: input.channelId,
-    });
+      await this.activityService.recordActivity({
+        userId: reqUser.id,
+        entity: EntityType.REPLY,
+        action: ActionType.CREATED,
+        entityId: replyId,
+        channelId: input.channelId,
+      });
 
-    return `Reply Successfully Added with id ${replyId}`;
+      return `Reply Successfully Added with id ${replyId}`;
+    } catch (error) {
+      throw new InternalServerErrorException(`Failed to create reply`);
+    }
   }
 
   async deleteReply(replyId: number, reqUser: { id: number; role: string }) {
-    const deletedReply = await this.repliesRepository.deleteReply(
-      replyId,
-      reqUser,
-    );
+    try {
+      const deletedReply = await this.repliesRepository.deleteReply(
+        replyId,
+        reqUser,
+      );
 
-    await this.activityService.recordActivity({
-      userId: reqUser.id,
-      entity: EntityType.REPLY,
-      action: ActionType.DELETED,
-      entityId: replyId,
-      channelId: deletedReply.channelId,
-    });
+      await this.activityService.recordActivity({
+        userId: reqUser.id,
+        entity: EntityType.REPLY,
+        action: ActionType.DELETED,
+        entityId: replyId,
+        channelId: deletedReply.channelId,
+      });
 
-    return `Reply Successfully Deleted with id ${replyId}`;
+      return `Reply Successfully Deleted with id ${replyId}`;
+    } catch (error) {
+      throw new InternalServerErrorException(`Failed to delete reply`);
+    }
   }
 
   async updateReply(
@@ -51,31 +59,46 @@ export class RepliesService {
     content: string,
     reqUser: { id: number; role: string },
   ) {
-    const updatedReply = await this.repliesRepository.updateReply(
-      replyId,
-      content,
-      reqUser,
-    );
+    try {
+      const updatedReply = await this.repliesRepository.updateReply(
+        replyId,
+        content,
+        reqUser,
+      );
 
-    await this.activityService.recordActivity({
-      userId: reqUser.id,
-      entity: EntityType.REPLY,
-      action: ActionType.UPDATED,
-      entityId: replyId,
-      channelId: updatedReply.channelId,
-    });
+      await this.activityService.recordActivity({
+        userId: reqUser.id,
+        entity: EntityType.REPLY,
+        action: ActionType.UPDATED,
+        entityId: replyId,
+        channelId: updatedReply.channelId,
+      });
 
-    return `Reply Successfully Updated with id ${replyId}`;
+      return `Reply Successfully Updated with id ${replyId}`;
+    } catch (error) {
+      throw new InternalServerErrorException(`Failed to update reply`);
+    }
   }
 
   async findReplyById(replyId: number, reqUser: { id: number; role: string }) {
-    return await this.repliesRepository.findReplyById(replyId, reqUser);
+    try {
+      return await this.repliesRepository.findReplyById(replyId, reqUser);
+    } catch (error) {
+      throw new InternalServerErrorException(`Failed to fetch reply`);
+    }
   }
 
   async getRepliesByComment(
     commentId: number,
     reqUser: { id: number; role: string },
   ) {
-    return this.repliesRepository.getRepliesByComment(commentId, reqUser);
+    try {
+      return await this.repliesRepository.getRepliesByComment(
+        commentId,
+        reqUser,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(`Failed to fetch replies`);
+    }
   }
 }
